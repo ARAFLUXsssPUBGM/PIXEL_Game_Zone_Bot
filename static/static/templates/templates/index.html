@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIXEL Game Zone - Ro'yxatdan O'tish</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Visual Banner -->
+        <div class="banner">
+            <h1>PIXEL</h1>
+            <p>Game Zone</p>
+        </div>
+        <!-- Tournaments View -->
+        <div id="tournaments-view" class="card">
+            <h2>🎮 Faol Turnirlar</h2>
+            <div id="tournament-list" class="tournament-list">
+                <p style="text-align: center; color: var(--text-muted);">Turnirlar yuklanmoqda...</p>
+            </div>
+        </div>
+        <!-- Registration Form View (Hidden by default) -->
+        <div id="register-view" class="card" style="display: none;">
+            <h2 id="form-title">📝 Ro'yxatdan o'tish</h2>
+            <form id="registration-form">
+                <input type="hidden" id="tournament-id">
+                
+                <div class="form-group">
+                    <label for="team-name">Jamoa Nomi</label>
+                    <input type="text" id="team-name" placeholder="Masalan: NAVI" required>
+                </div>
+                <div class="form-group">
+                    <label for="captain-name">Sardor Ismi va Familiyasi</label>
+                    <input type="text" id="captain-name" placeholder="Masalan: Alisher Valiyev" required>
+                </div>
+                <div class="form-group">
+                    <label for="captain-phone">Sardor Telefon Raqami</label>
+                    <input type="tel" id="captain-phone" placeholder="Masalan: +998901234567" required>
+                </div>
+                <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; margin: 15px 0 10px 0; color: var(--secondary-neon);">👥 Jamoa A'zolari</h3>
+                <div class="form-group">
+                    <label for="player2">O'yinchi 2 (Ismi)</label>
+                    <input type="text" id="player2" placeholder="Ismi va Familiyasi" required>
+                </div>
+                <div class="form-group">
+                    <label for="player3">O'yinchi 3 (Ismi)</label>
+                    <input type="text" id="player3" placeholder="Ismi va Familiyasi" required>
+                </div>
+                <div class="form-group">
+                    <label for="player4">O'yinchi 4 (Ismi)</label>
+                    <input type="text" id="player4" placeholder="Ismi va Familiyasi" required>
+                </div>
+                <div class="form-group">
+                    <label for="player5">O'yinchi 5 (Ismi)</label>
+                    <input type="text" id="player5" placeholder="Ismi va Familiyasi" required>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn btn-secondary" onclick="showTournaments()">Orqaga</button>
+                    <button type="submit" class="btn">Yuborish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+    <script src="/static/app.js"></script>
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        let tournaments = [];
+        // Fetch tournaments on load
+        async function loadTournaments() {
+            try {
+                const response = await fetch('/api/tournaments');
+                if (!response.ok) throw new Error('Ma\'lumotlarni yuklab bo\'lmadi');
+                tournaments = await response.json();
+                renderTournaments();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+        function renderTournaments() {
+            const listEl = document.getElementById('tournament-list');
+            if (tournaments.length === 0) {
+                listEl.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 15px;">Hozirda faol turnirlar yo\'q.</p>';
+                return;
+            }
+            listEl.innerHTML = '';
+            tournaments.forEach(t => {
+                const isFull = t.filled_slots >= t.total_slots;
+                const fillPercent = (t.filled_slots / t.total_slots) * 100;
+                
+                const itemEl = document.createElement('div');
+                itemEl.className = 'tournament-item';
+                
+                itemEl.innerHTML = `
+                    <div class="tournament-info">
+                        <h3>${t.game_name}</h3>
+                        <div class="slots-indicator ${isFull ? 'slots-full' : ''}">
+                            <div class="slots-bar">
+                                <div class="slots-fill" style="width: ${fillPercent}%"></div>
+                            </div>
+                            <span class="slots-text">${t.filled_slots}/${t.total_slots} jamoa</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-cyan" style="width: auto; padding: 8px 16px; font-size: 0.85rem;" 
+                        ${isFull ? 'disabled' : ''} onclick="openRegisterForm(${t.id})">
+                        ${isFull ? 'To\'lgan' : 'Qo\'shilish'}
+                    </button>
+                `;
+                listEl.appendChild(itemEl);
+            });
+        }
+        function openRegisterForm(tournamentId) {
+            const t = tournaments.find(x => x.id === tournamentId);
+            if (!t) return;
+            
+            document.getElementById('tournament-id').value = tournamentId;
+            document.getElementById('form-title').innerText = `📝 ${t.game_name} Turniriga Ro'yxatdan O'tish`;
+            
+            // Clear previous form data
+            document.getElementById('registration-form').reset();
+            
+            document.getElementById('tournaments-view').style.display = 'none';
+            document.getElementById('register-view').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+        function showTournaments() {
+            document.getElementById('register-view').style.display = 'none';
+            document.getElementById('tournaments-view').style.display = 'block';
+            loadTournaments();
+        }
+        // Form Submit
+        document.getElementById('registration-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const tournamentId = parseInt(document.getElementById('tournament-id').value);
+            const teamName = document.getElementById('team-name').value.trim();
+            const captainName = document.getElementById('captain-name').value.trim();
+            const captainPhone = document.getElementById('captain-phone').value.trim();
+            const players = [
+                document.getElementById('player2').value.trim(),
+                document.getElementById('player3').value.trim(),
+                document.getElementById('player4').value.trim(),
+                document.getElementById('player5').value.trim()
+            ];
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Yuborilmoqda...';
+            try {
+                // Prepare initData for authentication
+                const initData = tg.initData || "";
+                
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-Init-Data': initData
+                    },
+                    body: JSON.stringify({
+                        tournament_id: tournamentId,
+                        team_name: teamName,
+                        captain_name: captainName,
+                        captain_phone: captainPhone,
+                        members: players
+                    })
+                });
+                const resData = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(resData.error || 'Xatolik yuz berdi');
+                }
+                showToast('Jamoangiz muvaffaqiyatli ro\'yxatdan o\'tdi!', 'success');
+                setTimeout(() => {
+                    // Send message/data to bot and close Web App
+                    tg.sendData(JSON.stringify({
+                        action: "registered",
+                        team_name: teamName,
+                        game_name: resData.game_name
+                    }));
+                    tg.close();
+                }, 2000);
+            } catch (err) {
+                showToast(err.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Yuborish';
+            }
+        });
+        // Load initially
+        loadTournaments();
+    </script>
+</body>
+</html>
