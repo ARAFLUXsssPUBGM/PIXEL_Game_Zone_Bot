@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIXEL Game Zone - Admin Panel</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <!-- Visual Banner -->
+        <div class="banner">
+            <h1>PIXEL Admin</h1>
+            <p>Game Zone Panel</p>
+        </div>
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('stats-tab')">📊 Stats</button>
+            <button class="tab-btn" onclick="switchTab('tournaments-tab')">🎮 Turnirlar</button>
+            <button class="tab-btn" onclick="switchTab('teams-tab')">👥 Jamoalar</button>
+            <button class="tab-btn" id="admins-tab-nav" onclick="switchTab('admins-tab')" style="display: none;">👥 Adminlar</button>
+            <button class="tab-btn" onclick="switchTab('broadcast-tab')">📢 Xabarlar</button>
+        </div>
+        <!-- Tab 1: Stats -->
+        <div id="stats-tab" class="tab-content active card">
+            <h2>📊 Umumiy Statistika</h2>
+            <div class="admin-grid">
+                <div class="stat-box">
+                    <div class="stat-val" id="stat-total-tournaments">-</div>
+                    <div class="stat-label">Jami Turnirlar</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="stat-active-tournaments" style="color: var(--secondary-neon);">-</div>
+                    <div class="stat-label">Faol Turnirlar</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="stat-total-teams">-</div>
+                    <div class="stat-label">Jami Jamoalar</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-val" id="stat-total-players" style="color: var(--primary-neon);">-</div>
+                    <div class="stat-label">Jami Ishtirokchilar</div>
+                </div>
+            </div>
+            <h3 style="font-family: 'Orbitron', sans-serif; font-size: 1rem; margin-top: 20px; margin-bottom: 10px;">🎮 O'yinlar bo'yicha jamoalar:</h3>
+            <div id="game-stats-list" class="tournament-list">
+                <!-- Dynamic listing -->
+            </div>
+        </div>
+        <!-- Tab 2: Tournaments Management -->
+        <div id="tournaments-tab" class="tab-content card">
+            <h2>🎮 Turnirlarni Boshqarish</h2>
+            
+            <form id="create-tournament-form" style="margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; margin-bottom: 15px; color: var(--secondary-neon);">➕ Yangi Turnir Yaratish</h3>
+                <div class="form-group">
+                    <label for="new-game-name">O'yin Nomi</label>
+                    <input type="text" id="new-game-name" placeholder="Masalan: CS2 Tournament 5v5" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-total-slots">Slotlar soni (Jamoalar soni limiti)</label>
+                    <input type="number" id="new-total-slots" min="1" max="128" value="8" required>
+                </div>
+                <button type="submit" class="btn">Turnirni Yaratish</button>
+            </form>
+            <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; margin-bottom: 15px;">📋 Mavjud Turnirlar</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>O'yin</th>
+                            <th>Slotlar</th>
+                            <th>Status</th>
+                            <th>Harakat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tournaments-table-body">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Tab 3: Teams Registration details -->
+        <div id="teams-tab" class="tab-content card">
+            <h2>👥 Jamoalar Ro'yxati</h2>
+            <div class="form-group">
+                <label for="select-tournament-filter">Turnirni tanlang</label>
+                <select id="select-tournament-filter" onchange="loadRegisteredTeams()">
+                    <!-- Dynamic tournaments -->
+                </select>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem;">Jamoalar ro'yxati (<span id="team-count-display">0</span>)</h3>
+                <button class="btn btn-outline-cyan" onclick="downloadCSV()" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">📥 CSV Yuklab olish</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Jamoa nomi</th>
+                            <th>Sardor</th>
+                            <th>Telefon</th>
+                            <th>A'zolar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teams-table-body">
+                        <!-- Dynamic teams -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Tab 4: Admins Management (Only for main admin) -->
+        <div id="admins-tab" class="tab-content card">
+            <h2>👥 Adminlarni Boshqarish</h2>
+            <form id="add-admin-form" style="margin-bottom: 25px;">
+                <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; margin-bottom: 15px; color: var(--secondary-neon);">➕ Yangi Admin Qo'shish</h3>
+                <div class="form-group">
+                    <label for="admin-chat-id">Telegram Chat ID</label>
+                    <input type="number" id="admin-chat-id" placeholder="Masalan: 12345678" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-name">Admin Ismi</label>
+                    <input type="text" id="admin-name" placeholder="Masalan: Sardor" required>
+                </div>
+                <button type="submit" class="btn">Admin Qo'shish</button>
+            </form>
+            <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; margin-bottom: 10px;">👥 Mavjud Adminlar</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Admin ustiga bosib uni ro'yxatdan o'chirishingiz mumkin.</p>
+            <div id="admins-list" class="admin-list">
+                <!-- Dynamic admin buttons -->
+            </div>
+        </div>
+        <!-- Tab 5: Broadcast / Messaging -->
+        <div id="broadcast-tab" class="tab-content card">
+            <h2>📢 Xabar Tarqatish</h2>
+            <form id="broadcast-form">
+                <div class="form-group">
+                    <label for="broadcast-target">Kimga Yuborish</label>
+                    <select id="broadcast-target">
+                        <option value="all">Botning barcha foydalanuvchilariga</option>
+                        <!-- Dynamic options for tournaments will be loaded here -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="broadcast-message">Xabar Matni</label>
+                    <textarea id="broadcast-message" rows="6" placeholder="Yubormoqchi bo'lgan xabaringiz matnini kiriting..." required></textarea>
+                </div>
+                <button type="submit" class="btn">Xabarni Yuborish</button>
+            </form>
+        </div>
+    </div>
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Tasdiqlash</div>
+                <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <p id="confirm-modal-text">Haqiqatan ham bu amalni bajarmoqchimisiz?</p>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Yo'q</button>
+                <button class="btn btn-danger" id="confirm-modal-yes-btn">Ha, O'chirish</button>
+            </div>
+        </div>
+    </div>
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+    <script src="/static/app.js"></script>
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        const initData = tg.initData || "";
+        let isMainAdmin = false;
+        let selectedAdminToDelete = null;
+        // Switch Tabs
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Find button matching tab
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            if (tabId === 'stats-tab') loadStats();
+            if (tabId === 'tournaments-tab') loadTournaments();
+            if (tabId === 'teams-tab') loadTournamentsForFilter();
+            if (tabId === 'admins-tab') loadAdmins();
+            if (tabId === 'broadcast-tab') loadTournamentsForBroadcast();
+        }
+        // Fetch stats
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats', {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                
+                if (res.status === 403) {
+                    showToast('Kirish rad etildi! Siz admin emassiz.', 'error');
+                    setTimeout(() => tg.close(), 3000);
+                    return;
+                }
+                const data = await res.json();
+                
+                // Show admin tab if the user is main admin
+                isMainAdmin = data.is_main_admin;
+                if (isMainAdmin) {
+                    document.getElementById('admins-tab-nav').style.display = 'block';
+                }
+                document.getElementById('stat-total-tournaments').innerText = data.stats.total_tournaments;
+                document.getElementById('stat-active-tournaments').innerText = data.stats.active_tournaments;
+                document.getElementById('stat-total-teams').innerText = data.stats.total_teams;
+                document.getElementById('stat-total-players').innerText = data.stats.total_players;
+                const gamesList = document.getElementById('game-stats-list');
+                gamesList.innerHTML = '';
+                const gamesStats = data.stats.games_stats;
+                if (Object.keys(gamesStats).length === 0) {
+                    gamesList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 10px;">Ma\'lumotlar mavjud emas</p>';
+                } else {
+                    for (const [game, count] of Object.entries(gamesStats)) {
+                        const item = document.createElement('div');
+                        item.className = 'tournament-item';
+                        item.style.padding = '10px 15px';
+                        item.innerHTML = `
+                            <div class="tournament-info">
+                                <h3 style="font-size: 0.95rem;">${game}</h3>
+                            </div>
+                            <span class="slots-text" style="font-size: 0.95rem;">${count} ta jamoa (${count * 5} ta ishtirokchi)</span>
+                        `;
+                        gamesList.appendChild(item);
+                    }
+                }
+            } catch (err) {
+                showToast('Ma\'lumotlarni yuklashda xatolik', 'error');
+            }
+        }
+        // Tournaments Tab
+        let activeTournamentsList = [];
+        async function loadTournaments() {
+            try {
+                const res = await fetch('/api/admin/tournaments-all', {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                const data = await res.json();
+                activeTournamentsList = data;
+                
+                const tbody = document.getElementById('tournaments-table-body');
+                tbody.innerHTML = '';
+                
+                data.forEach(t => {
+                    const tr = document.createElement('tr');
+                    const isActive = t.status === 'active';
+                    
+                    tr.innerHTML = `
+                        <td style="font-weight: 500;">${t.game_name}</td>
+                        <td>${t.filled_slots}/${t.total_slots}</td>
+                        <td><span class="badge ${isActive ? 'badge-active' : 'badge-completed'}">${isActive ? 'Faol' : 'Yopilgan'}</span></td>
+                        <td>
+                            ${isActive ? `<button class="btn btn-danger" style="width: auto; padding: 4px 8px; font-size: 0.75rem;" onclick="closeTournament(${t.id})">Yopish</button>` : '<span style="color: var(--text-muted);">Tugagan</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showToast('Turnirlarni yuklashda xatolik', 'error');
+            }
+        }
+        // Create Tournament
+        document.getElementById('create-tournament-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('new-game-name').value.trim();
+            const slots = parseInt(document.getElementById('new-total-slots').value);
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            try {
+                const res = await fetch('/api/admin/tournaments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-Init-Data': initData
+                    },
+                    body: JSON.stringify({ game_name: name, total_slots: slots })
+                });
+                if (res.ok) {
+                    showToast('Turnir muvaffaqiyatli yaratildi!', 'success');
+                    document.getElementById('create-tournament-form').reset();
+                    loadTournaments();
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Xatolik');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+        // Close Tournament
+        async function closeTournament(id) {
+            if (!confirm('Haqiqatan ham ushbu turnirni yopmoqchimisiz? Ro\'yxatdan o\'tish to\'xtatiladi.')) return;
+            
+            try {
+                const res = await fetch(`/api/admin/tournaments/${id}/close`, {
+                    method: 'POST',
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                if (res.ok) {
+                    showToast('Turnir yopildi', 'success');
+                    loadTournaments();
+                } else {
+                    showToast('Xatolik yuz berdi', 'error');
+                }
+            } catch (err) {
+                showToast('Tarmoq xatoligi', 'error');
+            }
+        }
+        // Teams filter dropdown
+        async function loadTournamentsForFilter() {
+            try {
+                const res = await fetch('/api/admin/tournaments-all', {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                const data = await res.json();
+                
+                const select = document.getElementById('select-tournament-filter');
+                select.innerHTML = '<option value="">-- Tanlang --</option>';
+                data.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = `${t.game_name} (${t.status === 'active' ? 'Faol' : 'Yopilgan'})`;
+                    select.appendChild(opt);
+                });
+                
+                document.getElementById('teams-table-body').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Turnirni tanlang</td></tr>';
+                document.getElementById('team-count-display').innerText = '0';
+            } catch (err) {
+                showToast('Turnirlar ro\'yxatini olishda xatolik', 'error');
+            }
+        }
+        // Load registered teams for selected tournament
+        let currentTeams = [];
+        async function loadRegisteredTeams() {
+            const tournamentId = document.getElementById('select-tournament-filter').value;
+            if (!tournamentId) {
+                document.getElementById('teams-table-body').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Turnirni tanlang</td></tr>';
+                document.getElementById('team-count-display').innerText = '0';
+                currentTeams = [];
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/registrations?tournament_id=${tournamentId}`, {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                const data = await res.json();
+                currentTeams = data;
+                
+                document.getElementById('team-count-display').innerText = data.length;
+                
+                const tbody = document.getElementById('teams-table-body');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Hali hech qaysi jamoa ro\'yxatdan o\'tmagan.</td></tr>';
+                    return;
+                }
+                data.forEach(team => {
+                    const tr = document.createElement('tr');
+                    const membersList = team.members.join(', ');
+                    
+                    tr.innerHTML = `
+                        <td style="font-weight: 600; color: var(--secondary-neon);">${team.team_name}</td>
+                        <td>${team.captain_name}</td>
+                        <td><a href="tel:${team.captain_phone}" style="color: #fff; text-decoration: none;">${team.captain_phone}</a></td>
+                        <td style="font-size: 0.8rem; color: var(--text-muted);" title="${membersList}">${membersList}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showToast('Jamoalarni yuklashda xatolik', 'error');
+            }
+        }
+        // CSV Export
+        function downloadCSV() {
+            const select = document.getElementById('select-tournament-filter');
+            const tournamentId = select.value;
+            if (!tournamentId) {
+                showToast('Turnir tanlanmagan!', 'error');
+                return;
+            }
+            if (currentTeams.length === 0) {
+                showToast('Yuklab olish uchun jamoalar yo\'q!', 'error');
+                return;
+            }
+            const gameName = select.options[select.selectedIndex].text.split('(')[0].trim();
+            
+            // Generate CSV content with UTF-8 BOM for Excel Cyrillic/Uzbek support
+            let csvContent = "\uFEFF";
+            csvContent += "ID,Jamoa Nomi,Sardor Ismi,Telefon,O'yinchi 2,O'yinchi 3,O'yinchi 4,O'yinchi 5,Sana\n";
+            
+            currentTeams.forEach((team, index) => {
+                const row = [
+                    index + 1,
+                    `"${team.team_name.replace(/"/g, '""')}"`,
+                    `"${team.captain_name.replace(/"/g, '""')}"`,
+                    `"${team.captain_phone}"`,
+                    `"${team.members[0]?.replace(/"/g, '""') || ''}"`,
+                    `"${team.members[1]?.replace(/"/g, '""') || ''}"`,
+                    `"${team.members[2]?.replace(/"/g, '""') || ''}"`,
+                    `"${team.members[3]?.replace(/"/g, '""') || ''}"`,
+                    `"${team.timestamp}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `PIXEL_${gameName.replace(/\s+/g, '_')}_Teams.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        // Admins Tab
+        async function loadAdmins() {
+            try {
+                const res = await fetch('/api/admin/admins', {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                const data = await res.json();
+                
+                const list = document.getElementById('admins-list');
+                list.innerHTML = '';
+                
+                if (data.length === 0) {
+                    list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Hozircha qo\'shimcha adminlar yo\'q.</p>';
+                    return;
+                }
+                data.forEach(admin => {
+                    const tag = document.createElement('div');
+                    tag.className = 'admin-tag';
+                    tag.innerHTML = `
+                        <span>👤 ${admin.name} (${admin.chat_id})</span>
+                        <button class="admin-delete-btn" onclick="confirmDeleteAdmin(${admin.chat_id}, '${admin.name}')">&times;</button>
+                    `;
+                    list.appendChild(tag);
+                });
+            } catch (err) {
+                showToast('Adminlarni yuklashda xatolik', 'error');
+            }
+        }
+        // Add Admin Form
+        document.getElementById('add-admin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chatId = parseInt(document.getElementById('admin-chat-id').value);
+            const name = document.getElementById('admin-name').value.trim();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            try {
+                const res = await fetch('/api/admin/admins', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-Init-Data': initData
+                    },
+                    body: JSON.stringify({ chat_id: chatId, name: name })
+                });
+                if (res.ok) {
+                    showToast('Admin qo\'shildi!', 'success');
+                    document.getElementById('add-admin-form').reset();
+                    loadAdmins();
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Xatolik');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+        // Delete Admin Confirm Modal
+        function confirmDeleteAdmin(chatId, name) {
+            selectedAdminToDelete = chatId;
+            document.getElementById('confirm-modal-text').innerText = `Haqiqatan ham "${name}" (ID: ${chatId}) adminlik huquqini bekor qilmoqchimisiz?`;
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+            selectedAdminToDelete = null;
+        }
+        document.getElementById('confirm-modal-yes-btn').addEventListener('click', async () => {
+            if (!selectedAdminToDelete) return;
+            
+            try {
+                const res = await fetch(`/api/admin/admins/${selectedAdminToDelete}`, {
+                    method: 'DELETE',
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                if (res.ok) {
+                    showToast('Admin o\'chirib tashlandi', 'success');
+                    closeConfirmModal();
+                    loadAdmins();
+                } else {
+                    showToast('O\'chirishda xatolik yuz berdi', 'error');
+                }
+            } catch (err) {
+                showToast('Tarmoq xatoligi', 'error');
+            }
+        });
+        // Broadcast Tab - Load active tournaments dropdown options
+        async function loadTournamentsForBroadcast() {
+            try {
+                const res = await fetch('/api/admin/tournaments-all', {
+                    headers: { 'X-Telegram-Init-Data': initData }
+                });
+                const data = await res.json();
+                
+                const select = document.getElementById('broadcast-target');
+                // Keep only first element ("all")
+                select.innerHTML = '<option value="all">Botning barcha foydalanuvchilariga</option>';
+                
+                data.forEach(t => {
+                    if (t.status === 'active') {
+                        const opt = document.createElement('option');
+                        opt.value = `t_${t.id}`;
+                        opt.innerText = `${t.game_name} ishtirokchilariga (${t.filled_slots * 5} ta foydalanuvchi)`;
+                        select.appendChild(opt);
+                    }
+                });
+            } catch (err) {
+                showToast('Ma\'lumotlarni olishda xatolik', 'error');
+            }
+        }
+        // Broadcast form submit
+        document.getElementById('broadcast-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const target = document.getElementById('broadcast-target').value;
+            const message = document.getElementById('broadcast-message').value.trim();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Yuborilmoqda...';
+            try {
+                const res = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-Init-Data': initData
+                    },
+                    body: JSON.stringify({ target: target, message: message })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Xabar muvaffaqiyatli tarqatildi (Jami: ${data.sent_count} kishiga)`, 'success');
+                    document.getElementById('broadcast-message').value = '';
+                } else {
+                    throw new Error(data.error || 'Xatolik');
+                }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Xabarni Yuborish';
+            }
+        });
+        // Initial loading of stats
+        loadStats();
+    </script>
+</body>
+</html>
